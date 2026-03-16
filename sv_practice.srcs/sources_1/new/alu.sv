@@ -99,7 +99,7 @@ module alu (
                 if (req_i) state_next = ALU_REQUEST;
             end
             ALU_REQUEST: begin
-                 casez (cmd_i)
+                 casez (cmd_i_ff)
                    CMD_CUSTOM_MUL: state_next = ALU_CUSTOM_INIT;
                    default:        state_next = ALU_COMB_SAVE;
                endcase      
