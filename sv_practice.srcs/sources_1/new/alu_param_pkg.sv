@@ -23,13 +23,11 @@ package alu_param_pkg;
     ALU_IDLE         = 4'b0000,
     ALU_REQUEST      = 4'b0001,
     ALU_COMB_SAVE    = 4'b0010,
-    ALU_CUSTOM_INIT  = 4'b0011,
-    ALU_CUSTOM_LOOP  = 4'b0100,
-    ALU_CUSTOM_STEP  = 4'b0101,
-    ALU_CUSTOM_SAVE  = 4'b0110
+    ALU_CUSTOM_LOOP  = 4'b0011,
+    ALU_CUSTOM_STEP  = 4'b0100,
+    ALU_CUSTOM_SAVE  = 4'b0101
   } alu_state_e;
 
-  
 endpackage
 
 `endif

@@ -15,8 +15,8 @@ module tb_alu;
     logic [ALU_ADDR_W-1:0] addr_o;
     logic                  flag_o;
 
-    logic clk_i;
-    logic rst_ni;
+    logic clk;
+    logic rst_n;
     logic req_i;
     logic busy_o;
     logic ready_o;
@@ -36,8 +36,8 @@ module tb_alu;
         .addr_o     (addr_o),
         .flag_o     (flag_o),
     
-        .clk_i      (clk_i),
-        .rst_ni     (rst_ni),
+        .clk        (clk),
+        .rst_n      (rst_n),
         .req_i      (req_i),
         .busy_o     (busy_o),
         .ready_o    (ready_o)
@@ -49,41 +49,41 @@ module tb_alu;
     );
 
     initial begin
-        clk_i = 0;
-        forever #(CLK_PERIOD/2) clk_i = ~clk_i;
+        clk = 0;
+        forever #(CLK_PERIOD/2) clk = ~clk;
     end
 
 
     task reset();
-        rst_ni = 'b0;
+        rst_n = 'b0;
         req_i  = 'b0;
         op0_i  = 'b0;
         op1_i  = 'b0;
         addr_i = 'b0;
         cmd_i  = 'b0;
-        repeat (2) @(posedge clk_i);
-        rst_ni = 1;
-        repeat (2) @(posedge clk_i);
+        repeat (2) @(posedge clk);
+        rst_n = 1;
+        repeat (2) @(posedge clk);
     endtask
 
     task send_cmd(input logic [ALU_DATA_W-1:0] a,
                   input logic [ALU_DATA_W-1:0] b,
                   input logic [ALU_ADDR_W-1:0] adr,
                   input logic [ALU_CMD_W-1:0]  cmd);
-        @(posedge clk_i);
+        @(posedge clk);
         req_i <= 1;
         op0_i <= a;
         op1_i <= b;
         addr_i<= adr;
         cmd_i <= cmd;
-        @(posedge clk_i);
+        @(posedge clk);
         req_i <= 0;
     endtask
 
   
     task wait_ready();
         @(posedge ready_o); 
-        @(posedge clk_i);
+        @(posedge clk);
     endtask
 
     task check_comb(input logic [ALU_DATA_W-1:0] expected_res,

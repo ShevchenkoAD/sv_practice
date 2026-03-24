@@ -16,8 +16,8 @@ module alu (
   output logic [ALU_ADDR_W-1:0] addr_o,
   output logic                  flag_o,
   
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk, 
+  input  logic rst_n, 
   input  logic req_i,
   output logic busy_o,
   output logic ready_o
@@ -47,49 +47,48 @@ module alu (
     assign busy_o  = busy_o_ff;
     assign ready_o = ready_o_ff;
 
-
     logic [ALU_CMD_W-2:0]  counter_ff, counter_next;
-    logic [ALU_DATA_W-1:0] inter_ff,   inter_next;
     logic [ALU_DATA_W-1:0] result_ff,  result_next;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_sync_ctrl
-      if (!rst_ni) begin
+    always_ff @(posedge clk or negedge rst_n) begin : proc_state_sync
+      if (!rst_n) begin
         state_ff <= ALU_IDLE;
-        
-        res_o_ff   <= 'b0;
-        addr_o_ff  <= 'b0;
-        flag_o_ff  <= 'b0;
-        busy_o_ff  <= 'b0;
-        ready_o_ff <= 'b0;
-        
-        op0_i_ff  <= 'b0;
-        op1_i_ff  <= 'b0;
-        addr_i_ff <= 'b0;
-        cmd_i_ff  <= 'b0;
-        
-        counter_ff <= 'b0;
-        inter_ff   <= 'b0;
-        result_ff  <= 'b0;
       end else begin
         state_ff <= state_next;
-        
-        res_o_ff   <= res_o_next;
-        addr_o_ff  <= addr_o_next;
-        flag_o_ff  <= flag_o_next;
-        busy_o_ff  <= busy_o_next;
-        ready_o_ff <= ready_o_next;
-        
-        op0_i_ff  <= op0_i_next;
-        op1_i_ff  <= op1_i_next;
-        addr_i_ff <= addr_i_next;
-        cmd_i_ff  <= cmd_i_next;
-        
-        counter_ff <= counter_next;
-        inter_ff   <= inter_next;
-        result_ff  <= result_next;
       end
     end
     
+    always_ff @(posedge clk or negedge rst_n) begin : proc_ff_sync
+          if (!rst_n) begin
+            res_o_ff   <= 'b0;
+            addr_o_ff  <= 'b0;
+            flag_o_ff  <= 'b0;
+            busy_o_ff  <= 'b0;
+            ready_o_ff <= 'b0;
+            
+            op0_i_ff  <= 'b0;
+            op1_i_ff  <= 'b0;
+            addr_i_ff <= 'b0;
+            cmd_i_ff  <= 'b0;
+            
+            counter_ff <= 'b0;
+            result_ff  <= 'b0;
+          end else begin
+            res_o_ff   <= res_o_next;
+            addr_o_ff  <= addr_o_next;
+            flag_o_ff  <= flag_o_next;
+            busy_o_ff  <= busy_o_next;
+            ready_o_ff <= ready_o_next;
+            
+            op0_i_ff  <= op0_i_next;
+            op1_i_ff  <= op1_i_next;
+            addr_i_ff <= addr_i_next;
+            cmd_i_ff  <= cmd_i_next;
+            
+            counter_ff <= counter_next;
+            result_ff  <= result_next;
+          end
+        end
     
     always_comb begin : proc_state_ctrl 
         state_next = state_ff;
@@ -100,19 +99,12 @@ module alu (
             end
             ALU_REQUEST: begin
                  casez (cmd_i_ff)
-                   CMD_CUSTOM_MUL: state_next = ALU_CUSTOM_INIT;
+                   CMD_CUSTOM_MUL: state_next = ALU_CUSTOM_LOOP;
                    default:        state_next = ALU_COMB_SAVE;
                endcase      
-//                if (cmd_i == CMD_CUSTOM_MUL)
-//                    state_next = ALU_CUSTOM_INIT;
-//                else
-//                    state_next = ALU_COMB_SAVE;
             end
             ALU_COMB_SAVE: begin
                 state_next = ALU_IDLE;
-            end
-            ALU_CUSTOM_INIT: begin
-                state_next = ALU_CUSTOM_LOOP;
             end
             ALU_CUSTOM_LOOP: begin
                 if (counter_ff == 0) 
@@ -144,7 +136,6 @@ module alu (
         cmd_i_next  = cmd_i_ff;     
         
         counter_next = counter_ff;
-        inter_next   = inter_ff;
         result_next  = result_ff;
           
         unique case (state_ff) 
@@ -160,6 +151,9 @@ module alu (
             ALU_REQUEST: begin
                 busy_o_next  = 'b1;
                 ready_o_next = 'b0;      
+                
+                result_next  = 'b0;
+                counter_next = unsigned'(cmd_i_ff[ALU_CMD_W-2:0]);  
             end
             ALU_COMB_SAVE: begin    
                 logic   [ALU_DATA_W-1:0] and_res;
@@ -203,23 +197,19 @@ module alu (
                     end
                 endcase       
             end
-            ALU_CUSTOM_INIT: begin
-                 busy_o_next  = 'b1;
-                 ready_o_next = 'b0; 
-                  
-                 inter_next   = unsigned'(op0_i_ff) + unsigned'(op1_i_ff);
-                 result_next  = 'b0;
-                 counter_next = unsigned'(cmd_i_ff[ALU_CMD_W-2:0]);     
-            end
             ALU_CUSTOM_LOOP: begin
                 busy_o_next  = 'b1;
                 ready_o_next = 'b0;      
             end
             ALU_CUSTOM_STEP: begin
+                logic [ALU_DATA_W-1:0] inter_value;
+            
+                inter_value = unsigned'(op0_i_ff) + unsigned'(op1_i_ff);
+            
                 busy_o_next  = 'b1;
                 ready_o_next = 'b0;  
                 
-                result_next   = unsigned'(result_ff) + unsigned'(inter_ff);    
+                result_next   = unsigned'(result_ff) + unsigned'(inter_value);    
                 counter_next  = unsigned'(counter_ff - 1'b1);  
             end                        
             ALU_CUSTOM_SAVE: begin
